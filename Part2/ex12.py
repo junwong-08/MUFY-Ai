@@ -1,18 +1,14 @@
-def calculator(x, y, operation):
-    if operation == "+":
-        return x + y
-
-    elif operation == "-":
-        return x - y
-
-    elif operation == "*":
-        return x * y
-
-    elif operation == "/":
-        return x / y
-
+def check_string(string):
+    if "the" in string.lower():
+        print("Found it!")
     else:
-        return "Invalid operation"
+        print("Nope!")
 
 
-print(calculator(10, 5, "+"))
+str_1 = "the"
+str_2 = "Thumbs up!"
+str_3 = "Theatre can be boring."
+
+check_string(str_1)
+check_string(str_2)
+check_string(str_3)
