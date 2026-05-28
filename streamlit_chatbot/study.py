@@ -100,9 +100,8 @@ if page == "Dashboard":
 
     st.subheader("🔥 Productivity Score")
     st.progress(productivity_score)
-    st.write(f"Score: {productivity_score}/100")
 
-    st.subheader("⚠ Burnout Detection")
+    st.write(f"Score: {productivity_score}/100")
 
     if total_hours >= 40:
         st.error("High burnout risk detected.")
@@ -176,7 +175,6 @@ elif page == "Study Timer":
 
         st.success("✅ Study Session Complete!")
 
-        # Save session
         st.session_state.study_sessions.append(mins)
 
         if subject:
@@ -185,14 +183,11 @@ elif page == "Study Timer":
 
             st.session_state.subject_history[subject] += mins
 
-        # XP + TOKENS REWARD SYSTEM
         add_xp(30)
-        add_tokens(mins // 10)   # 1 token per 10 minutes
-
-        st.info(f"🎉 You earned {mins // 10} tokens!")
+        add_tokens(mins // 10)
 
 # =====================================================
-# AI WEEKLY SCHEDULER
+# AI WEEKLY SCHEDULER (UPDATED)
 # =====================================================
 elif page == "AI Weekly Scheduler":
 
@@ -208,13 +203,11 @@ elif page == "AI Weekly Scheduler":
     priority_dict = {}
 
     for subject in subject_list:
-
         priority = st.selectbox(
             f"{subject} Priority",
             ["High", "Medium", "Low"],
             key=subject
         )
-
         priority_dict[subject] = priority
 
     energy_mode = st.selectbox(
@@ -245,6 +238,34 @@ elif page == "AI Weekly Scheduler":
 
     days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
 
+    # =====================================================
+    # NEW: STUDY SESSION FUNCTION INSIDE WEEKLY SCHEDULER
+    # =====================================================
+
+    def get_blocked_times(day, lecture_count, study_count):
+        blocks = []
+
+        # lectures
+        for i in range(lecture_count):
+            start = st.session_state.get(f"{day}ls{i}", None)
+            end = st.session_state.get(f"{day}le{i}", None)
+
+            if start and end:
+                blocks.append((time_to_minutes(start), time_to_minutes(end)))
+
+        # study sessions
+        for i in range(study_count):
+            start = st.session_state.get(f"{day}ss{i}", None)
+            end = st.session_state.get(f"{day}se{i}", None)
+
+            if start and end:
+                blocks.append((time_to_minutes(start), time_to_minutes(end)))
+
+        return blocks
+
+    # =====================================================
+    # DAY LOOP
+    # =====================================================
     for day in days:
 
         st.markdown("---")
@@ -257,20 +278,31 @@ elif page == "AI Weekly Scheduler":
                 key=f"lec_{day}"
             )
 
-            blocked_times = []
+            study_count = st.number_input(
+                f"{day} Study Sessions",
+                0, 6, 1,
+                key=f"study_{day}"
+            )
 
+            # lecture inputs
             for i in range(lecture_count):
+                st.time_input(f"{day} Lecture {i+1} Start", key=f"{day}ls{i}")
+                st.time_input(f"{day} Lecture {i+1} End", key=f"{day}le{i}")
 
-                lec_start = st.time_input(f"{day} Lecture {i+1} Start", key=f"{day}ls{i}")
-                lec_end = st.time_input(f"{day} Lecture {i+1} End", key=f"{day}le{i}")
-
-                blocked_times.append(
-                    (time_to_minutes(lec_start), time_to_minutes(lec_end))
-                )
+            # study inputs (SAME FORMAT AS LECTURES)
+            for i in range(study_count):
+                st.time_input(f"{day} Study {i+1} Start", key=f"{day}ss{i}")
+                st.time_input(f"{day} Study {i+1} End", key=f"{day}se{i}")
 
             if st.button(f"Generate {day} Schedule"):
 
-                current_time = 480 if energy_mode == "Morning" else 780 if energy_mode == "Afternoon" else 1140
+                blocked_times = get_blocked_times(day, lecture_count, study_count)
+
+                current_time = (
+                    480 if energy_mode == "Morning"
+                    else 780 if energy_mode == "Afternoon"
+                    else 1140
+                )
 
                 study_blocks = []
                 subject_index = 0
@@ -302,7 +334,7 @@ elif page == "AI Weekly Scheduler":
                 add_xp(20)
 
 # =====================================================
-# GAME SHOP (NEW TOKEN SYSTEM)
+# GAME SHOP
 # =====================================================
 elif page == "Game Shop":
 
@@ -328,7 +360,6 @@ elif page == "Game Shop":
             if st.button(f"Buy {item}", key=item):
 
                 if spend_tokens(cost):
-
                     st.success(f"Purchased {item}!")
                     if "XP boost" in item:
                         add_xp(50)
