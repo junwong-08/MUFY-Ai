@@ -1,17 +1,17 @@
 import streamlit as st
 import time
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # =====================================================
 # PAGE SETUP
 # =====================================================
 st.set_page_config(
-    page_title="Smart Study Scheduler",
+    page_title="Smart Academic Operating System",
     layout="wide"
 )
 
-st.title("📅 Smart Study Scheduler")
+st.title("🎓 Smart Academic Operating System")
 
 # =====================================================
 # SESSION STATE
@@ -22,11 +22,8 @@ if "xp" not in st.session_state:
 if "study_sessions" not in st.session_state:
     st.session_state.study_sessions = []
 
-if "study_start" not in st.session_state:
-    st.session_state.study_start = None
-
-if "study_target" not in st.session_state:
-    st.session_state.study_target = 0
+if "subject_history" not in st.session_state:
+    st.session_state.subject_history = {}
 
 if "music_links" not in st.session_state:
     st.session_state.music_links = []
@@ -71,7 +68,7 @@ page = st.sidebar.radio(
     [
         "Dashboard",
         "Study Timer",
-        "Weekly Scheduler"
+        "AI Weekly Scheduler"
     ]
 )
 
@@ -80,31 +77,88 @@ page = st.sidebar.radio(
 # =====================================================
 if page == "Dashboard":
 
-    st.header("📊 Dashboard")
+    st.header("📊 Weekly Analytics Dashboard")
 
-    col1, col2 = st.columns(2)
+    total_minutes = sum(
+        st.session_state.study_sessions
+    )
+
+    total_hours = round(
+        total_minutes / 60,
+        1
+    )
+
+    # ================= METRICS =================
+    col1, col2, col3 = st.columns(3)
 
     with col1:
-        st.metric("⭐ XP", st.session_state.xp)
+        st.metric(
+            "⭐ XP",
+            st.session_state.xp
+        )
 
     with col2:
         st.metric(
-            "📚 Study Sessions",
+            "📚 Total Study Hours",
+            total_hours
+        )
+
+    with col3:
+        st.metric(
+            "🧠 Sessions",
             len(st.session_state.study_sessions)
         )
 
+    # ================= PRODUCTIVITY SCORE =================
+    productivity_score = min(
+        100,
+        len(st.session_state.study_sessions) * 10
+    )
+
+    st.subheader("🔥 Productivity Score")
+
+    st.progress(productivity_score)
+
+    st.write(
+        f"Score: {productivity_score}/100"
+    )
+
+    # ================= BURNOUT DETECTION =================
+    st.subheader("⚠ Burnout Detection")
+
+    if total_hours >= 40:
+
+        st.error(
+            "High burnout risk detected."
+        )
+
+    elif total_hours >= 25:
+
+        st.warning(
+            "Moderate workload detected."
+        )
+
+    else:
+
+        st.success(
+            "Healthy study balance detected."
+        )
+
+    # ================= STUDY GRAPH =================
     if st.session_state.study_sessions:
 
-        st.subheader("📈 Study Progress")
+        st.subheader("📈 Study Analytics")
 
-        plt.figure(figsize=(8, 4))
+        plt.figure(figsize=(10, 4))
 
         plt.plot(
             st.session_state.study_sessions,
             marker="o"
         )
 
-        plt.title("Study Minutes Per Session")
+        plt.title(
+            "Study Minutes Per Session"
+        )
 
         plt.xlabel("Session")
 
@@ -113,11 +167,44 @@ if page == "Dashboard":
         st.pyplot(plt)
 
 # =====================================================
-# STUDY TIMER + MUSIC
+# STUDY TIMER + SMART STUDY MODE
 # =====================================================
 elif page == "Study Timer":
 
-    st.header("⏱ Study Timer")
+    st.header("⏱ Smart Study Timer")
+
+    # ================= STUDY MODE =================
+    st.subheader("🧠 Smart Study Mode")
+
+    study_mode = st.selectbox(
+        "Select Study Mode",
+        [
+            "Deep Focus",
+            "Balanced",
+            "Light Revision"
+        ]
+    )
+
+    if study_mode == "Deep Focus":
+
+        default_time = 90
+        break_time = 20
+
+    elif study_mode == "Balanced":
+
+        default_time = 60
+        break_time = 15
+
+    else:
+
+        default_time = 30
+        break_time = 10
+
+    st.info(
+        f"Recommended Study: "
+        f"{default_time} mins | "
+        f"Break: {break_time} mins"
+    )
 
     # ================= MUSIC =================
     st.subheader("🎵 Study Music")
@@ -160,65 +247,83 @@ elif page == "Study Timer":
         "Study Minutes",
         5,
         300,
-        25
+        default_time
+    )
+
+    subject = st.text_input(
+        "Subject Studied"
     )
 
     if st.button("Start Study Session"):
 
-        st.session_state.study_start = time.time()
+        progress_bar = st.progress(0)
 
-        st.session_state.study_target = mins * 60
+        status = st.empty()
 
-        st.success("Study session started!")
+        for i in range(mins * 60):
 
-    if st.session_state.study_start:
+            remaining = (
+                mins * 60
+                -
+                i
+            )
 
-        elapsed = (
-            time.time()
-            -
-            st.session_state.study_start
-        )
+            progress = (
+                i
+                /
+                (mins * 60)
+            )
 
-        remaining = (
-            st.session_state.study_target
-            -
-            elapsed
-        )
+            progress_bar.progress(progress)
 
-        if remaining > 0:
-
-            st.info(
+            status.info(
                 f"📚 Studying... "
-                f"{int(remaining)} seconds left"
+                f"{remaining} sec remaining"
             )
 
             time.sleep(1)
 
-            st.rerun()
+        st.success(
+            "✅ Study Session Complete!"
+        )
 
-        else:
+        st.session_state.study_sessions.append(
+            mins
+        )
 
-            st.success("✅ Session Complete!")
+        if subject:
 
-            st.session_state.study_sessions.append(mins)
+            if (
+                subject
+                not in
+                st.session_state.subject_history
+            ):
 
-            add_xp(30)
+                st.session_state.subject_history[
+                    subject
+                ] = 0
 
-            st.session_state.study_start = None
+            st.session_state.subject_history[
+                subject
+            ] += mins
+
+        add_xp(30)
 
 # =====================================================
-# WEEKLY SMART SCHEDULER
+# AI WEEKLY SCHEDULER
 # =====================================================
-elif page == "Weekly Scheduler":
+elif page == "AI Weekly Scheduler":
 
-    st.header("📅 AI Weekly Scheduler")
+    st.header("📅 AI Adaptive Weekly Scheduler")
 
     st.write(
-        "Insert your lecture sessions and rest time. "
-        "The AI will automatically arrange revision sessions."
+        "Insert lectures, rest periods, and preferences. "
+        "The AI will intelligently organise revision sessions."
     )
 
-    # ================= SUBJECTS =================
+    # =====================================================
+    # SUBJECTS
+    # =====================================================
     subjects = st.text_input(
         "Subjects (comma separated)",
         "Math,Chemistry,Physics,English"
@@ -229,15 +334,96 @@ elif page == "Weekly Scheduler":
         for s in subjects.split(",")
     ]
 
-    # ================= PREFERENCE =================
-    st.subheader("🧠 Study Preference")
+    # =====================================================
+    # PRIORITY ENGINE
+    # =====================================================
+    st.subheader("🔥 Subject Priority")
 
-    preferred_study_length = st.selectbox(
-        "Preferred Study Session Length",
-        [30, 45, 60, 90, 120]
+    priority_dict = {}
+
+    for subject in subject_list:
+
+        priority = st.selectbox(
+            f"{subject} Priority",
+            [
+                "High",
+                "Medium",
+                "Low"
+            ],
+            key=subject
+        )
+
+        priority_dict[subject] = priority
+
+    # =====================================================
+    # ENERGY MODE
+    # =====================================================
+    st.subheader("🧠 Energy-Based Scheduling")
+
+    energy_mode = st.selectbox(
+        "When are you most productive?",
+        [
+            "Morning",
+            "Afternoon",
+            "Night"
+        ]
     )
 
-    # ================= DAYS =================
+    # =====================================================
+    # STUDY MODE
+    # =====================================================
+    st.subheader("📚 Smart Study Mode")
+
+    study_mode = st.selectbox(
+        "Study Intensity",
+        [
+            "Deep Focus",
+            "Balanced",
+            "Light Revision"
+        ]
+    )
+
+    if study_mode == "Deep Focus":
+
+        study_length = 90
+        break_length = 20
+
+    elif study_mode == "Balanced":
+
+        study_length = 60
+        break_length = 15
+
+    else:
+
+        study_length = 30
+        break_length = 10
+
+    # =====================================================
+    # PRIORITY WEIGHTS
+    # =====================================================
+    weights = {
+        "High": 3,
+        "Medium": 2,
+        "Low": 1
+    }
+
+    weighted_subjects = []
+
+    for subject in subject_list:
+
+        repeat = weights[
+            priority_dict[subject]
+        ]
+
+        for i in range(repeat):
+
+            weighted_subjects.append(
+                subject
+            )
+
+    # =====================================================
+    # DAYS
+    # =====================================================
     days = [
         "Monday",
         "Tuesday",
@@ -248,160 +434,240 @@ elif page == "Weekly Scheduler":
         "Sunday"
     ]
 
+    # =====================================================
+    # DAILY INPUTS
+    # =====================================================
     for day in days:
 
         st.markdown("---")
 
-        st.subheader(f"📌 {day}")
+        with st.expander(f"📌 {day}"):
 
-        # ================= LECTURE =================
-        st.write("🎓 Lecture Session")
-
-        lec_start = st.time_input(
-            f"{day} Lecture Start",
-            value=datetime.strptime(
-                "10:00",
-                "%H:%M"
-            ).time(),
-            key=f"lec_start_{day}"
-        )
-
-        lec_end = st.time_input(
-            f"{day} Lecture End",
-            value=datetime.strptime(
-                "12:00",
-                "%H:%M"
-            ).time(),
-            key=f"lec_end_{day}"
-        )
-
-        # ================= REST =================
-        st.write("😴 Rest Session")
-
-        rest_start = st.time_input(
-            f"{day} Rest Start",
-            value=datetime.strptime(
-                "13:30",
-                "%H:%M"
-            ).time(),
-            key=f"rest_start_{day}"
-        )
-
-        rest_end = st.time_input(
-            f"{day} Rest End",
-            value=datetime.strptime(
-                "14:30",
-                "%H:%M"
-            ).time(),
-            key=f"rest_end_{day}"
-        )
-
-        # ================= GENERATE =================
-        if st.button(
-            f"Generate {day} Schedule"
-        ):
-
-            lecture_start_mins = time_to_minutes(
-                lec_start
+            # ================= LECTURES =================
+            lecture_count = st.number_input(
+                f"{day} Number of Lectures",
+                0,
+                6,
+                2,
+                key=f"lecture_count_{day}"
             )
 
-            lecture_end_mins = time_to_minutes(
-                lec_end
-            )
+            blocked_times = []
 
-            rest_start_mins = time_to_minutes(
-                rest_start
-            )
+            for i in range(lecture_count):
 
-            rest_end_mins = time_to_minutes(
-                rest_end
-            )
-
-            study_blocks = []
-
-            current_time = lecture_end_mins + 30
-
-            subject_index = 0
-
-            while (
-                current_time
-                +
-                preferred_study_length
-                <=
-                1320
-            ):
-
-                # avoid rest session
-                if (
-                    current_time
-                    >=
-                    rest_start_mins
-                    and
-                    current_time
-                    <
-                    rest_end_mins
-                ):
-
-                    current_time = rest_end_mins
-
-                    continue
-
-                end_time = (
-                    current_time
-                    +
-                    preferred_study_length
+                st.write(
+                    f"🎓 Lecture {i+1}"
                 )
 
-                subject = subject_list[
-                    subject_index
-                    %
-                    len(subject_list)
-                ]
+                lec_start = st.time_input(
+                    f"{day} Lecture {i+1} Start",
+                    key=f"{day}_lec_start_{i}"
+                )
 
-                study_blocks.append(
+                lec_end = st.time_input(
+                    f"{day} Lecture {i+1} End",
+                    key=f"{day}_lec_end_{i}"
+                )
+
+                blocked_times.append(
                     (
-                        subject,
-                        current_time,
-                        end_time
+                        time_to_minutes(
+                            lec_start
+                        ),
+                        time_to_minutes(
+                            lec_end
+                        ),
+                        "Lecture"
                     )
                 )
 
-                current_time = (
-                    end_time
-                    +
-                    15
-                )
-
-                subject_index += 1
-
-            # ================= DISPLAY =================
-            st.success(
-                f"✅ {day} Schedule Generated!"
+            # ================= REST =================
+            rest_count = st.number_input(
+                f"{day} Number of Rest Sessions",
+                0,
+                4,
+                1,
+                key=f"rest_count_{day}"
             )
 
-            st.write(
-                f"🎓 Lecture: "
-                f"{minutes_to_time(lecture_start_mins)}"
-                f" - "
-                f"{minutes_to_time(lecture_end_mins)}"
-            )
-
-            st.write(
-                f"😴 Rest: "
-                f"{minutes_to_time(rest_start_mins)}"
-                f" - "
-                f"{minutes_to_time(rest_end_mins)}"
-            )
-
-            st.subheader("📚 AI Revision Schedule")
-
-            for block in study_blocks:
+            for i in range(rest_count):
 
                 st.write(
-                    f"📖 {block[0]} | "
-                    f"{minutes_to_time(block[1])}"
-                    f" - "
-                    f"{minutes_to_time(block[2])}"
+                    f"😴 Rest {i+1}"
                 )
 
-            add_xp(20)
+                rest_start = st.time_input(
+                    f"{day} Rest {i+1} Start",
+                    key=f"{day}_rest_start_{i}"
+                )
+
+                rest_end = st.time_input(
+                    f"{day} Rest {i+1} End",
+                    key=f"{day}_rest_end_{i}"
+                )
+
+                blocked_times.append(
+                    (
+                        time_to_minutes(
+                            rest_start
+                        ),
+                        time_to_minutes(
+                            rest_end
+                        ),
+                        "Rest"
+                    )
+                )
+
+            # =====================================================
+            # GENERATE SCHEDULE
+            # =====================================================
+            if st.button(
+                f"Generate {day} Schedule"
+            ):
+
+                blocked_times.sort()
+
+                study_blocks = []
+
+                # =====================================================
+                # ENERGY START TIME
+                # =====================================================
+                if energy_mode == "Morning":
+
+                    current_time = 480
+
+                elif energy_mode == "Afternoon":
+
+                    current_time = 780
+
+                else:
+
+                    current_time = 1140
+
+                subject_index = 0
+
+                while current_time < 1320:
+
+                    blocked = False
+
+                    for block in blocked_times:
+
+                        block_start = block[0]
+                        block_end = block[1]
+
+                        if (
+                            current_time
+                            >=
+                            block_start
+                            and
+                            current_time
+                            <
+                            block_end
+                        ):
+
+                            current_time = (
+                                block_end
+                                +
+                                15
+                            )
+
+                            blocked = True
+
+                            break
+
+                    if blocked:
+
+                        continue
+
+                    end_time = (
+                        current_time
+                        +
+                        study_length
+                    )
+
+                    if end_time > 1320:
+
+                        break
+
+                    subject = weighted_subjects[
+                        subject_index
+                        %
+                        len(weighted_subjects)
+                    ]
+
+                    study_blocks.append(
+                        (
+                            subject,
+                            current_time,
+                            end_time
+                        )
+                    )
+
+                    current_time = (
+                        end_time
+                        +
+                        break_length
+                    )
+
+                    subject_index += 1
+
+                # =====================================================
+                # DISPLAY
+                # =====================================================
+                st.success(
+                    f"✅ {day} Schedule Generated!"
+                )
+
+                st.subheader(
+                    "📚 AI Revision Schedule"
+                )
+
+                for block in study_blocks:
+
+                    st.write(
+                        f"📖 {block[0]} | "
+                        f"{minutes_to_time(block[1])}"
+                        f" - "
+                        f"{minutes_to_time(block[2])}"
+                    )
+
+                # =====================================================
+                # TIMELINE CHART
+                # =====================================================
+                st.subheader(
+                    "📊 Daily Timeline"
+                )
+
+                fig, ax = plt.subplots(
+                    figsize=(10, 2)
+                )
+
+                y_pos = 1
+
+                for block in study_blocks:
+
+                    start = block[1]
+                    duration = (
+                        block[2]
+                        -
+                        block[1]
+                    )
+
+                    ax.barh(
+                        y_pos,
+                        duration,
+                        left=start
+                    )
+
+                ax.set_xlim(0, 1440)
+
+                ax.set_xlabel(
+                    "Minutes in Day"
+                )
+
+                ax.set_yticks([])
+
+                st.pyplot(fig)
+
+                add_xp(20)
